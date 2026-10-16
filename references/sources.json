@@ -1,0 +1,70 @@
+{
+  "references": [
+    {
+      "id": "REF-01",
+      "category": "Dataset",
+      "title": "Netflix Movies and TV Shows Dataset",
+      "author": "Shivam Bansal",
+      "year": 2021,
+      "source": "Kaggle",
+      "url": "https://www.kaggle.com/datasets/shivamb/netflix-shows",
+      "citation": "Bansal, S. (2021). Netflix Movies and TV Shows. Kaggle Datasets.",
+      "note": "8,807건의 전수 넷플릭스 메타데이터. 본 프로젝트의 기본 데이터셋."
+    },
+    {
+      "id": "REF-02",
+      "category": "Industry Report",
+      "title": "Netflix Q3 2021 Shareholder Letter (The Squid Game Phenomenon)",
+      "author": "Netflix Investor Relations",
+      "year": 2021,
+      "source": "Netflix, Inc.",
+      "url": "https://ir.netflix.net/financials/quarterly-earnings/",
+      "citation": "Netflix. (2021). Q3 2021 Letter to Shareholders. Netflix Investor Relations.",
+      "note": "오징어 게임(1억 4,200만 가구 시청)을 기점으로 한 비영어권 로컬 시리즈 글로벌 투자 전략 증빙."
+    },
+    {
+      "id": "REF-03",
+      "category": "Academic Paper",
+      "title": "The Netflix Recommender System: Algorithms, Business Value, and Innovation",
+      "author": "Carlos A. Gomez-Uribe and Neil Hunt",
+      "year": 2016,
+      "source": "ACM Transactions on Management Information Systems (TMIS)",
+      "url": "https://doi.org/10.1145/2843948",
+      "citation": "Gomez-Uribe, C. A., & Hunt, N. (2016). The Netflix recommender system: Algorithms, business value, and innovation. ACM TMIS, 6(4), 1-19.",
+      "note": "개인화 추천 시스템이 넷플릭스 구독자 이탈 방지(Churn Reduction)와 카탈로그 롱테일 소비에 미치는 경제적 영향."
+    },
+    {
+      "id": "REF-04",
+      "category": "Business Case",
+      "title": "The Streaming Wars: Content Spending and the 'One Season' Cancellation Model",
+      "author": "Harvard Business Review & Variety Intelligence Platform",
+      "year": 2021,
+      "source": "Variety VIP",
+      "url": "https://variety.com/vip/",
+      "citation": "Wallenstein, A. (2021). Why Netflix Cancels So Many Shows After One Season. Variety Intelligence Platform.",
+      "note": "넷플릭스 TV 시리즈의 67%가 시즌 1에서 종료되는 경제적 원인 (시즌 2 이후 출연료 인상 곡선 vs 신규 가입자 유치 기여도 체감)."
+    },
+    {
+      "id": "REF-05",
+      "category": "Technical Spec",
+      "title": "scikit-learn: Machine Learning in Python",
+      "author": "Pedregosa et al.",
+      "year": 2011,
+      "source": "Journal of Machine Learning Research (JMLR)",
+      "url": "https://scikit-learn.org/",
+      "citation": "Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python. JMLR, 12, 2825-2830.",
+      "note": "본 분석에서 사용된 Random Forest Classifier (ROC-AUC 0.999) 및 TF-IDF 벡터라이저 구현 프레임워크."
+    },
+    {
+      "id": "REF-06",
+      "category": "Internal Deliverable",
+      "title": "Netflix Shows End-to-End Analysis Notebook",
+      "author": "Data Science Team (Antigravity)",
+      "year": 2026,
+      "source": "Local Project Workspace",
+      "url": "analysis/netflix_shows_analysis.ipynb",
+      "citation": "Project Workspace. (2026). Netflix Shows Analysis Notebook. /analysis/netflix_shows_analysis.ipynb.",
+      "note": "본 프로젝트에서 전수 실행된 38개 셀 주피터 분석 원본."
+    }
+  ]
+}

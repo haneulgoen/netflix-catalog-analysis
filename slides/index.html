@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>데이터 분석 최종 과제 보고서 — 넷플릭스 글로벌 카탈로그 아키텍처 및 콘텐츠 전략 분석</title>
+  
+  <!-- Typography: Inter & Noto Sans KR, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  
+  <!-- Anime.js for Motion Graphics -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+
+  <style>
+    :root {
+      /* Official Netflix Red & Professional Academic Dark Palette */
+      --netflix-red: #E50914;
+      --netflix-red-hover: #b80710;
+      --netflix-red-glow: rgba(229, 9, 20, 0.35);
+      --netflix-red-soft: rgba(229, 9, 20, 0.12);
+      
+      --bg-canvas: #141414;
+      --bg-surface: #1B1B1B;
+      --bg-card: #222222;
+      --bg-elevated: #2A2A2A;
+      --bg-input: #333333;
+      
+      --text-white: #FFFFFF;
+      --text-main: #E5E5E5;
+      --text-muted: #A3A3A3;
+      --text-faint: #6E6E6E;
+      
+      --border-subtle: #2E2E2E;
+      --border-highlight: #444444;
+      
+      --color-movie: #0071eb;
+      --color-tv: #E50914;
+      --color-green: #2ecc71;
+      --color-gold: #f39c12;
+      
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+      
+      --font-sans: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+
+    /* Top Academic Header */
+    #header-nav {
+      height: 54px;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-mark {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--netflix-red);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+    }
+    .brand-mark::before {
+      content: '';
+      width: 4px;
+      height: 18px;
+      background: var(--netflix-red);
+      border-radius: 2px;
+    }
+    .doc-type-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--netflix-red-soft);
+      color: var(--netflix-red);
+      border: 1px solid rgba(229, 9, 20, 0.25);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .nav-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-action {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-action:hover {
+      background: var(--bg-elevated);
+      border-color: var(--border-highlight);
+      color: #fff;
+    }
+    .btn-action.red-primary {
+      background: var(--netflix-red);
+      border-color: var(--netflix-red);
+      color: #fff;
+    }
+    .btn-action.red-primary:hover {
+      background: var(--netflix-red-hover);
+      box-shadow: 0 0 12px var(--netflix-red-glow);
+    }
+
+    /* Sub-header Progress Tracker */
+    #progress-strip {
+      height: 3px;
+      background: var(--border-subtle);
+      position: relative;
+    }
+    #progress-fill {
+      height: 100%;
+      background: var(--netflix-red);
+      box-shadow: 0 0 8px var(--netflix-red-glow);
+      width: 8.33%;
+      transition: width 0.35s ease;
+    }
+
+    /* Slide Stage Container */
+    #presentation-stage {
+      width: 100vw;
+      height: calc(100vh - 54px - 3px - 50px);
+      overflow-y: auto;
+      padding: 36px 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .slide {
+      width: 100%;
+      max-width: 1280px;
+      display: none;
+      flex-direction: column;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Academic Header of Each Slide */
+    .slide-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .section-badge {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--netflix-red);
+    }
+    .slide-index-counter {
+      font-family: var(--font-code);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-faint);
+    }
+    .slide-headline {
+      font-size: clamp(26px, 2.7vw, 36px);
+      font-weight: 800;
+      color: var(--text-white);
+      letter-spacing: -0.6px;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .slide-summary-lead {
+      font-size: 15.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 24px;
+      max-width: 980px;
+    }
+
+    /* Slide Body Layouts */
+    .slide-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      align-items: stretch;
+      min-height: 420px;
+    }
+    .slide-grid.equal {
+      grid-template-columns: 1fr 1fr;
+    }
+    .slide-grid.full {
+      grid-template-columns: 1fr;
+    }
+
+    /* Academic Report Card Components */
+    .report-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .report-card.border-accent {
+      border-top: 3px solid var(--netflix-red);
+    }
+    .report-card.border-blue {
+      border-top: 3px solid var(--color-movie);
+    }
+    .report-card.border-green {
+      border-top: 3px solid var(--color-green);
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-label::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--netflix-red);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+
+    .card-content-text {
+      font-size: 14.5px;
+      color: var(--text-main);
+      line-height: 1.65;
+    }
+    .card-content-text strong {
+      color: #fff;
+      font-weight: 700;
+    }
+    .card-content-text code {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: var(--font-code);
+      font-size: 12.5px;
+      color: #fca5a5;
+    }
+
+    /* Structured Finding Points */
+    .finding-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .finding-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .finding-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--netflix-red);
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Motion Graphics Frame */
+    .motion-frame {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .motion-topbar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .motion-caption {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .btn-replay {
+      font-size: 11.5px;
+      font-weight: 600;
+      background: var(--bg-card);
+      color: var(--text-main);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .btn-replay:hover {
+      background: var(--netflix-red);
+      border-color: var(--netflix-red);
+      color: #fff;
+    }
+
+    /* Metric Counters */
+    .metric-display {
+      text-align: center;
+      padding: 16px;
+    }
+    .metric-number {
+      font-size: 68px;
+      font-weight: 900;
+      color: #fff;
+      font-family: var(--font-code);
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+    .metric-number.red {
+      color: var(--netflix-red);
+      text-shadow: 0 0 24px var(--netflix-red-glow);
+    }
+    .metric-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    /* Bar Visualization with Anime.js */
+    .bars-chart-box {
+      width: 100%;
+      height: 240px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      gap: 16px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+    .bar-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .bar-val-text {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #fff;
+      font-family: var(--font-code);
+      opacity: 0;
+    }
+    .bar-rect {
+      width: 100%;
+      max-width: 44px;
+      height: 0%;
+      border-radius: 4px 4px 0 0;
+      background: var(--netflix-red);
+      position: relative;
+    }
+    .bar-rect.gray { background: #555555; }
+    .bar-rect.blue { background: var(--color-movie); }
+    .bar-rect.gold { background: var(--color-gold); }
+    .bar-label-text {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: center;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+
+    /* Donut Chart with Anime.js */
+    .donut-chart-box {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      display: grid;
+      place-items: center;
+    }
+    .donut-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .donut-track { stroke: var(--bg-card); }
+    .donut-progress {
+      stroke: var(--netflix-red);
+      stroke-linecap: round;
+      stroke-dasharray: 440;
+      stroke-dashoffset: 440;
+    }
+    .donut-center-info {
+      position: absolute;
+      text-align: center;
+    }
+    .donut-stat-val {
+      font-size: 34px;
+      font-weight: 900;
+      color: #fff;
+      font-family: var(--font-code);
+      line-height: 1;
+    }
+    .donut-stat-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* Anomaly Table Fix Simulation */
+    .anomaly-fix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      font-family: var(--font-code);
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .anomaly-fix-table th {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .anomaly-fix-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: #ddd;
+    }
+    .badge-error {
+      background: rgba(229, 9, 20, 0.2);
+      color: #ff6b6b;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(229, 9, 20, 0.4);
+    }
+    .badge-success {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(46, 204, 113, 0.4);
+    }
+
+    /* Citation & Reference Footnote Row */
+    .slide-citation-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 14px;
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .cite-pill-tag {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 11.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .cite-pill-tag:hover {
+      border-color: var(--netflix-red);
+      color: #fff;
+    }
+    .cite-id {
+      color: var(--netflix-red);
+      font-weight: 800;
+    }
+
+    /* Cover Slide Specific Styles */
+    .cover-wrap {
+      max-width: 900px;
+      text-align: left;
+    }
+    .cover-header-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--netflix-red);
+      margin-bottom: 20px;
+    }
+    .cover-headline {
+      font-size: clamp(38px, 4.8vw, 62px);
+      font-weight: 900;
+      color: var(--text-white);
+      line-height: 1.15;
+      letter-spacing: -1.2px;
+      margin-bottom: 20px;
+    }
+    .cover-headline span {
+      color: var(--netflix-red);
+    }
+    .cover-description {
+      font-size: 18px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 36px;
+      font-weight: 400;
+    }
+    .submission-meta-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-left: 4px solid var(--netflix-red);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .meta-item-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-faint);
+      margin-bottom: 4px;
+    }
+    .meta-item-val {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Bottom Academic Presentation Controller Bar */
+    #bottom-controller {
+      height: 50px;
+      background: var(--bg-canvas);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      user-select: none;
+      z-index: 100;
+    }
+    .nav-buttons-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-slide-nav {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-slide-nav:hover {
+      background: var(--bg-elevated);
+      color: #fff;
+      border-color: var(--border-highlight);
+    }
+    .btn-slide-nav.primary {
+      background: var(--netflix-red);
+      border-color: var(--netflix-red);
+      color: #fff;
+    }
+    .btn-slide-nav.primary:hover {
+      background: var(--netflix-red-hover);
+    }
+    .toc-quick-select {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      height: 32px;
+      padding: 0 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      outline: none;
+    }
+
+    /* Modal Overlay for References */
+    .ref-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: none;
+      place-items: center;
+      padding: 24px;
+    }
+    .ref-modal-overlay.open { display: grid; }
+    .ref-modal-card {
+      width: 100%;
+      max-width: 760px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-highlight);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+      position: relative;
+    }
+    .ref-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .ref-modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ref-modal-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: var(--netflix-red);
+    }
+    .ref-close-btn {
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .ref-close-btn:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Academic Navigation -->
+  <header id="header-nav">
+    <div class="nav-left">
+      <div class="brand-mark">NETFLIX</div>
+      <span class="doc-type-badge">데이터 분석 보고서</span>
+      <span class="nav-title" id="top-section-label">데이터 분석 보고서</span>
+    </div>
+    <div class="nav-right">
+      <button class="btn-action" onclick="openReferencesModal()">📚 참고문헌 명세</button>
+      <a class="btn-action" href="../dashboard/index.html" target="_blank">🌐 웹 데이터베이스 뷰어</a>
+      <a class="btn-action red-primary" href="../analysis/netflix_shows_analysis.ipynb" download>📓 주피터 노트북 원본</a>
+      <button class="btn-action" onclick="toggleFullScreen()">⛶ 전체화면 (F)</button>
+    </div>
+  </header>
+
+  <!-- Progress Bar Strip -->
+  <div id="progress-strip">
+    <div id="progress-fill"></div>
+  </div>
+
+  <!-- Main Presentation Stage -->
+  <main id="presentation-stage">
+
+    <!-- ===================================================================
+         SLIDE 01: COVER & SUBMISSION METADATA
+         =================================================================== -->
+    <section class="slide active" data-slide="1">
+      <div class="cover-wrap">
+        <div class="cover-header-tag">
+          <span>데이터 분석 보고서 (Data Analysis Report)</span>
+        </div>
+        <h1 class="cover-headline">
+          넷플릭스 글로벌 카탈로그의<br/>
+          <span>콘텐츠 구조 역전과 플랫폼 전략</span> 실증 분석
+        </h1>
+        <p class="cover-description">
+          Kaggle 8,807건의 전수 메타데이터를 기반으로 한 포맷별 유입 추이, K-콘텐츠의 글로벌 집중도,
+          1시즌 패러독스 및 머신러닝 기반 콘텐츠 유형 분류 모델 연구
+        </p>
+
+        <div class="submission-meta-box">
+          <div>
+            <div class="meta-item-lbl">수강 과목</div>
+            <div class="meta-item-val" style="color:#fff; font-weight:700;">데이터 리터러시</div>
+          </div>
+          <div>
+            <div class="meta-item-lbl">보고서 작성자</div>
+            <div class="meta-item-val" style="color:var(--netflix-red); font-weight:800;">의류학과 김하늘 (202261312)</div>
+          </div>
+          <div>
+            <div class="meta-item-lbl">분석 대상 데이터</div>
+            <div class="meta-item-val">Netflix Titles (8,807건)</div>
+          </div>
+          <div>
+            <div class="meta-item-lbl">보고서 일자</div>
+            <div class="meta-item-val">2026년 10월</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row" style="width:100%; max-width:900px; margin-top:36px;">
+        <div>사용법: 키보드 <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">Space</kbd> 또는 <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">→</kbd> 키로 다음 슬라이드 이동</div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-01')">
+          <span class="cite-id">[REF-01]</span> Kaggle: shivamb/netflix-shows 원본 데이터
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 02: RESEARCH BACKGROUND & HYPOTHESIS
+         =================================================================== -->
+    <section class="slide" data-slide="2">
+      <div class="slide-meta-row">
+        <span class="section-badge">I. 서론 · 연구 배경 및 분석 가설</span>
+        <span class="slide-index-counter">02 / 12</span>
+      </div>
+      <h2 class="slide-headline">연구 배경 및 3대 핵심 분석 가설</h2>
+      <p class="slide-summary-lead">
+        단순 영화 스트리밍 서비스에서 글로벌 콘텐츠 제작 스튜디오로 진화한 넷플릭스의 카탈로그 변화를 실증적으로 규명합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Research Objectives</span>
+            <div class="card-title">데이터 분석의 3대 핵심 검증 질문</div>
+            <div class="finding-list">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><strong>가설 1. 포맷의 중심축 이동</strong>: 넷플릭스의 누적 카탈로그는 영화가 우세하지만, 구독자 락인(Lock-in)을 위해 최근 유입은 TV 시리즈에 집중될 것이다.</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><strong>가설 2. 국가별 콘텐츠 특화</strong>: 한국, 일본 등 주요 아시아 허브는 북미/인도와 판이하게 다른 포맷 집중도를 보일 것이다.</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><strong>가설 3. 메타데이터 분리 가능성</strong>: 러닝타임을 제외하더라도 장르와 제작 참여진 속성만으로 영화와 TV 쇼를 인공지능이 완벽히 분류할 수 있을 것이다.</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-faint); margin-top:16px;">
+            * 분석 도구: Jupyter Notebook, Pandas, Matplotlib, Scikit-learn, TF-IDF
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">데이터셋 전수 볼륨</span>
+            <button class="btn-replay" onclick="animSlide2()">▶ 카운트 재생</button>
+          </div>
+          <div class="metric-display">
+            <div class="metric-number red" id="s2-counter">0</div>
+            <div class="metric-desc">분석 대상 타이틀 수 (Titles Analyzed)</div>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted); text-align:center; line-height:1.5;">
+            1925년 고전부터 2021년 최신작까지 전수 조사 완료<br/>
+            (영화 6,131편 · TV 시리즈 2,676편)
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>연구 방법론: 탐색적 데이터 분석(EDA) 및 머신러닝 교차 검증 (Stratified 5-Fold)</div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-01')">
+          <span class="cite-id">[REF-01]</span> Shivam Bansal (2021). Kaggle Dataset
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 03: DATA SCHEMA & AUDIT
+         =================================================================== -->
+    <section class="slide" data-slide="3">
+      <div class="slide-meta-row">
+        <span class="section-badge">II. 데이터 개요 · 스키마 및 무결성 감사</span>
+        <span class="slide-index-counter">03 / 12</span>
+      </div>
+      <h2 class="slide-headline">데이터 스키마 및 결측치 현황 감사 (Schema Audit)</h2>
+      <p class="slide-summary-lead">
+        수집된 8,807개 레코드의 12개 메타데이터 속성별 결측 현황을 파악하고 정량적 분석 타당성을 검증합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card">
+          <div>
+            <span class="card-label">Data Dictionary & Missing Values</span>
+            <div class="card-title">주요 12개 속성 및 결측치 발생 원인 분석</div>
+            <div class="finding-list">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>director</code> <strong>결측 2,634건 (29.9%)</strong>: 영화와 달리 TV 시리즈는 단일 감독이 아닌 집단 쇼러너/에피소드별 연출 체제이므로 결측이 집중됨.</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>country</code> <strong>결측 831건 (9.4%)</strong>: 글로벌 다국적 배급작 및 독립 프로덕션의 미표기.</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>cast</code> <strong>결측 825건 (9.4%)</strong>: 내레이션 중심 다큐멘터리 및 스탠드업 코미디.</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>date_added</code> (10건), <code>rating</code> (4건): 극소수 결측치로 전처리 파이프라인에서 정규화.</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-faint); margin-top:14px;">
+            * 결측 정보 자체를 'has_director' 등 이진 피처로 전환하여 머신러닝 예측 신호로 활용.
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">컬럼별 유효 데이터 비율</span>
+            <button class="btn-replay" onclick="animSlide3()">▶ 재생</button>
+          </div>
+          <div class="bars-chart-box" id="s3-bars">
+            <div class="bar-column">
+              <span class="bar-val-text">100%</span>
+              <div class="bar-rect" data-h="90%"></div>
+              <span class="bar-label-text">제목/타입</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">70.1%</span>
+              <div class="bar-rect gray" data-h="63%"></div>
+              <span class="bar-label-text">감독 (Director)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">90.6%</span>
+              <div class="bar-rect" data-h="82%"></div>
+              <span class="bar-label-text">국가 (Country)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">99.9%</span>
+              <div class="bar-rect" data-h="90%"></div>
+              <span class="bar-label-text">러닝타임</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:12px;">
+            유효 데이터 완결성 90% 이상 확보하여 통계적 신뢰도 충족
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>상세 컬럼 사전: <span class="cite-pill-tag" onclick="openReferencesModal('data_dictionary')">references/data_dictionary.md 참조</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-06')">
+          <span class="cite-id">[REF-06]</span> 분석 주피터 노트북 무결성 감사 코드
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 04: ANOMALY FIX & FEATURE ENGINEERING
+         =================================================================== -->
+    <section class="slide" data-slide="4">
+      <div class="slide-meta-row">
+        <span class="section-badge">II. 데이터 전처리 · 이상치 복구 및 파생변수</span>
+        <span class="slide-index-counter">04 / 12</span>
+      </div>
+      <h2 class="slide-headline">이상치 복구 알고리즘 및 파생 피처 엔지니어링</h2>
+      <p class="slide-summary-lead">
+        입력 오류로 인한 컬럼 밀림(Column Shift) 이상치를 정규표현식으로 교정하고 심층 분석용 파생 변수를 구축했습니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Data Cleansing Strategy</span>
+            <div class="card-title">Louis C.K. 3편 컬럼 밀림 감지 및 교정</div>
+            <p class="card-content-text">
+              <code>rating</code> 컬럼에 <strong>'74 min', '84 min', '66 min'</strong>이 유입되고 <code>duration</code>이 결측된 3건의 이상치 발견.<br/>
+              문자열 패턴 매칭을 통해 duration으로 값을 안전하게 이전하고 rating을 정상화하여 집계 왜곡을 원천 차단함.
+            </p>
+            <div class="finding-list" style="margin-top:16px;">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>addition_lag_years</code>: 넷플릭스 등록년도 − 개봉년도 (오리지널 직행 시차 척도)</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>duration_num</code>: 영화(분 단위 정수) vs TV 시리즈(시즌 수) 수치화</div>
+              </div>
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div><code>target_audience</code>: 등급별 오디언스 그룹화 (Kids, Teens, Adults)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">이상치 복구 파이프라인 시뮬레이션</span>
+            <button class="btn-replay" onclick="animSlide4()">▶ 복구 실행</button>
+          </div>
+          <table class="anomaly-fix-table" id="s4-fix-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>작품명</th>
+                <th>Rating</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="fix-row-1">
+                <td>s5542</td>
+                <td>Louis C.K. 2017</td>
+                <td><span class="badge-error">74 min</span></td>
+                <td style="color:#777;">NaN (결측)</td>
+              </tr>
+              <tr id="fix-row-2">
+                <td>s5795</td>
+                <td>Louis C.K.: Hilarious</td>
+                <td><span class="badge-error">84 min</span></td>
+                <td style="color:#777;">NaN (결측)</td>
+              </tr>
+              <tr id="fix-row-3">
+                <td>s5814</td>
+                <td>Live at Comedy Store</td>
+                <td><span class="badge-error">66 min</span></td>
+                <td style="color:#777;">NaN (결측)</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size:12px; color:var(--color-green); margin-top:14px; font-weight:600;" id="s4-status-msg">
+            ▶ 복구 실행 버튼을 눌러 정규표현식 파이프라인 처리를 확인하세요.
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>전처리 구현 코드: <span class="cite-pill-tag">analysis/build_notebook.py Cell 4</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-06')">
+          <span class="cite-id">[REF-06]</span> Notebook Data Cleansing Spec
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 05: FINDING 1 - FORMAT INFLECTION
+         =================================================================== -->
+    <section class="slide" data-slide="5">
+      <div class="slide-meta-row">
+        <span class="section-badge">III. 탐색적 데이터 분석 · 발견점 1</span>
+        <span class="slide-index-counter">05 / 12</span>
+      </div>
+      <h2 class="slide-headline">포맷의 전략적 이동: 영화 중심에서 TV 시리즈 리텐션으로</h2>
+      <p class="slide-summary-lead">
+        누적 라이브러리는 영화(69.6%)가 우세하지만, 신규 추가 콘텐츠에서 TV 시리즈의 유입 비중이 34% 이상으로 급증했습니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Empirical Finding 01</span>
+            <div class="card-title">구독자 락인(Anti-Churn) 중심의 인벤토리 재편</div>
+            <p class="card-content-text">
+              • <strong>누적 비율</strong>: 영화 <strong>6,131편 (69.6%)</strong> vs TV 시리즈 <strong>2,676편 (30.4%)</strong>.<br/>
+              • <strong>2019년 최대 확장기</strong>: 단일 연도 사상 최고인 <strong>2,016편</strong>이 추가되며 글로벌 시장을 제패함.<br/>
+              • <strong>리텐션 패러다임 전환</strong>: 2014년 이전 15% 미만이던 TV 시리즈 유입 비중이 <strong>2020~2021년에는 34% 이상</strong>으로 대폭 확대됨.
+            </p>
+            <div class="finding-list" style="margin-top:16px;">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div>단발성으로 2시간 만에 끝나는 영화와 달리, 에피소드형 시리즈는 <strong>주 단위 시청 지속을 유도하여 월간 구독 해지를 방어하는 핵심 기제</strong>로 작용함.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">카탈로그 포맷 구성비</span>
+            <button class="btn-replay" onclick="animSlide5()">▶ 재생</button>
+          </div>
+          <div class="donut-chart-box">
+            <svg class="donut-svg" viewBox="0 0 160 160">
+              <circle class="donut-track" cx="80" cy="80" r="70" stroke-width="18" fill="none" />
+              <circle class="donut-progress" id="s5-donut-circle" cx="80" cy="80" r="70" stroke-width="18" fill="none" />
+            </svg>
+            <div class="donut-center-info">
+              <div class="donut-stat-val" id="s5-donut-val">69.6%</div>
+              <div class="donut-stat-lbl">영화 (Movies)</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:16px; margin-top:20px; font-size:12.5px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="width:12px; height:12px; background:var(--netflix-red); border-radius:2px;"></span>
+              <span>영화 6,131편 (69.6%)</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="width:12px; height:12px; background:#444; border-radius:2px;"></span>
+              <span>TV 시리즈 2,676편 (30.4%)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/02_yearly_growth_trend.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-03')">
+          <span class="cite-id">[REF-03]</span> Gomez-Uribe & Hunt (2016). ACM TMIS Recommender Study
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 06: FINDING 2 - K-CONTENT POLARIZATION
+         =================================================================== -->
+    <section class="slide" data-slide="6">
+      <div class="slide-meta-row">
+        <span class="section-badge">III. 탐색적 데이터 분석 · 발견점 2</span>
+        <span class="slide-index-counter">06 / 12</span>
+      </div>
+      <h2 class="slide-headline">글로벌 제작 허브의 양극화: K-드라마(79%) vs 발리우드(92%)</h2>
+      <p class="slide-summary-lead">
+        주요 아시아 제작 거점 간의 극명한 포맷 선호 차이와 넷플릭스의 한국 콘텐츠 특화 전략을 실증합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Empirical Finding 02</span>
+            <div class="card-title">국가별 엔터테인먼트 산업 생태계의 차이</div>
+            <p class="card-content-text">
+              • <strong>대한민국 (South Korea)</strong>: 199편 중 <strong>79.4%(158편)가 TV 시리즈(K-드라마)</strong>. 전 세계 주요 제작국 중 가장 높은 시리즈 집중도 기록.<br/>
+              • <strong>인도 (India)</strong>: 972편 중 <strong>91.9%(893편)가 영화</strong>로 발리우드 중심 극장 개봉작 라이선싱 의존.<br/>
+              • <strong>일본 (Japan)</strong>: 69.0%가 애니메이션 프랜차이즈 중심의 TV 시리즈.
+            </p>
+            <div class="finding-list" style="margin-top:14px;">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div>한국은 탄탄한 방송 스튜디오 제작 인프라를 바탕으로, 북미 대비 압도적으로 낮은 회당 제작비로 글로벌 시청률 1위를 견인하는 <strong>'가성비 높은 글로벌 시리즈 허브'</strong>로 자리매김함.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">주요 국가별 TV 시리즈 점유율 비교 (%)</span>
+            <button class="btn-replay" onclick="animSlide6()">▶ 재생</button>
+          </div>
+          <div class="bars-chart-box" id="s6-bars">
+            <div class="bar-column">
+              <span class="bar-val-text">79.4%</span>
+              <div class="bar-rect" data-h="85%"></div>
+              <span class="bar-label-text">🇰🇷 한국 (K-Drama)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">69.0%</span>
+              <div class="bar-rect gray" data-h="73%"></div>
+              <span class="bar-label-text">🇯🇵 일본 (Anime)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">27.0%</span>
+              <div class="bar-rect gray" data-h="35%"></div>
+              <span class="bar-label-text">🇺🇸 미국 (Standard)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">8.1%</span>
+              <div class="bar-rect gray" data-h="16%"></div>
+              <span class="bar-label-text">🇮🇳 인도 (Bollywood)</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:12px;">
+            한국은 10편 중 8편이 TV 시리즈로 글로벌 최고 수준의 시리즈 특화 시장
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/03_top_countries_comparison.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-02')">
+          <span class="cite-id">[REF-02]</span> Netflix Q3 2021 Shareholder Letter (K-Content Strategy)
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 07: FINDING 3 - ONE-AND-DONE PARADOX
+         =================================================================== -->
+    <section class="slide" data-slide="7">
+      <div class="slide-meta-row">
+        <span class="section-badge">III. 탐색적 데이터 분석 · 발견점 3</span>
+        <span class="slide-index-counter">07 / 12</span>
+      </div>
+      <h2 class="slide-headline">"One-and-Done" 1시즌 패러독스와 제작비 경제학</h2>
+      <p class="slide-summary-lead">
+        넷플릭스 TV 시리즈 중 67%가 시즌 1에서 종료되는 현상의 이면에는 스트리밍 비즈니스의 비용 곡선이 존재합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Empirical Finding 03</span>
+            <div class="card-title">시리즈 조기 종영(Fast-Fail)의 경제학적 배경</div>
+            <p class="card-content-text">
+              • <strong>시즌 1 종료 비율</strong>: 전체 TV 시리즈의 <strong>67.0% (1,793편)</strong>가 단 1개 시즌으로 종영.<br/>
+              • <strong>시즌 2</strong>: 15.9% / <strong>시즌 3</strong>: 7.4% / <strong>4시즌 이상 장수작</strong>: 9.7%<br/><br/>
+              스트리밍 계약 구조상 시즌 2, 시즌 3으로 갈수록 배우 출연료와 제작비 프리미엄이 기하급수적으로 증가하지만, 후속 시즌이 창출하는 <strong>'신규 구독자 유치 한계효용'은 급격히 체감</strong>합니다.
+            </p>
+            <div class="finding-list" style="margin-top:12px;">
+              <div class="finding-item">
+                <span class="finding-bullet"></span>
+                <div>따라서 넷플릭스는 기존작의 후속 시즌을 무리하게 연장하기보다, <strong>신선한 1시즌 미니시리즈를 다량 런칭하여 타율을 높이는 Fast-Fail 전략</strong>을 채택함.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">TV 시리즈 시즌 수 분포 피라미드</span>
+            <button class="btn-replay" onclick="animSlide7()">▶ 재생</button>
+          </div>
+          <div class="bars-chart-box" id="s7-bars">
+            <div class="bar-column">
+              <span class="bar-val-text">67.0%</span>
+              <div class="bar-rect" data-h="90%"></div>
+              <span class="bar-label-text">시즌 1 (1,793편)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">15.9%</span>
+              <div class="bar-rect gray" data-h="28%"></div>
+              <span class="bar-label-text">시즌 2 (425편)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">7.4%</span>
+              <div class="bar-rect gray" data-h="16%"></div>
+              <span class="bar-label-text">시즌 3 (199편)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">9.7%</span>
+              <div class="bar-rect gray" data-h="20%"></div>
+              <span class="bar-label-text">시즌 4+ (장수작)</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:12px;">
+            영화 평균 러닝타임은 99.6분(중앙값 98분)으로 1시간 40분에 집중
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/05_movie_duration_distribution.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-04')">
+          <span class="cite-id">[REF-04]</span> Variety VIP: Why Netflix Cancels Shows After One Season
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 08: FINDING 4 - MATURE RATINGS & AUDIENCE
+         =================================================================== -->
+    <section class="slide" data-slide="8">
+      <div class="slide-meta-row">
+        <span class="section-badge">III. 탐색적 데이터 분석 · 발견점 4</span>
+        <span class="slide-index-counter">08 / 12</span>
+      </div>
+      <h2 class="slide-headline">타겟 오디언스 세그멘테이션: 성인 및 청소년 중심 (60.9%)</h2>
+      <p class="slide-summary-lead">
+        전통 지상파 방송 심의 규제를 벗어나 성인 관람가(TV-MA)와 청소년물(TV-14)에 인벤토리를 집중했습니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Empirical Finding 04</span>
+            <div class="card-title">플랫폼 포지셔닝: 디즈니+ 대비 엣지 있는 성인 콘텐츠</div>
+            <p class="card-content-text">
+              • <strong>TV-MA (성인 관람가)</strong>: <strong>3,207편 (36.4%)</strong> — 단일 등급 기준 압도적 1위.<br/>
+              • <strong>TV-14 (14세 이상)</strong>: <strong>2,160편 (24.5%)</strong> — 2위.<br/>
+              • <strong>키즈 및 가족 등급 (TV-Y, G 등)</strong>: 약 15% 수준에 그침.<br/><br/>
+              가족 및 영유아 중심의 디즈니+와 직접 충돌을 회피하고, 심야 시청자를 사로잡는 <strong>다크 스릴러, 청소년 범죄물, 성인 다큐멘터리</strong>를 넷플릭스의 독점 경쟁력으로 구축함.
+            </p>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">시청 등급별 타이틀 볼륨</span>
+            <button class="btn-replay" onclick="animSlide8()">▶ 재생</button>
+          </div>
+          <div class="bars-chart-box" id="s8-bars">
+            <div class="bar-column">
+              <span class="bar-val-text">3,207</span>
+              <div class="bar-rect" data-h="90%"></div>
+              <span class="bar-label-text">TV-MA (성인)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">2,160</span>
+              <div class="bar-rect" data-h="68%"></div>
+              <span class="bar-label-text">TV-14 (14세+)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">863</span>
+              <div class="bar-rect gray" data-h="35%"></div>
+              <span class="bar-label-text">TV-PG (지도)</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">799</span>
+              <div class="bar-rect gray" data-h="32%"></div>
+              <span class="bar-label-text">R (제한)</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:12px;">
+            성인 및 청소년 타겟 콘텐츠가 전체의 60.9%를 점유함
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/04_content_ratings_distribution.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-01')">
+          <span class="cite-id">[REF-01]</span> Kaggle Rating Audit
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 09: FINDING 5 - ORIGINAL COMPRESSION (0-LAG)
+         =================================================================== -->
+    <section class="slide" data-slide="9">
+      <div class="slide-meta-row">
+        <span class="section-badge">III. 탐색적 데이터 분석 · 발견점 5</span>
+        <span class="slide-index-counter">09 / 12</span>
+      </div>
+      <h2 class="slide-headline">오리지널 직행 가속화: 당해 연도 등록률 52% 돌파 (0-Lag 시대)</h2>
+      <p class="slide-summary-lead">
+        구작 라이선스 구매 플랫폼에서 자체 제작 스튜디오로의 전환이 완료되었음을 입증합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Empirical Finding 05</span>
+            <div class="card-title">등록 지연 시간(Addition Lag)의 시계열 축소</div>
+            <p class="card-content-text">
+              • <strong>2015년 이전</strong>: 개봉 후 넷플릭스에 들어오기까지 <strong>평균 4~6년의 시차</strong> 발생 (극장 및 케이블 방영 후 잔여 판권 구매).<br/>
+              • <strong>2020~2021년</strong>: 신규 등록작의 <strong>52% 이상이 개봉 당해 연도(Lag = 0년)에 즉시 공개</strong>됨.<br/><br/>
+              전통적인 윈도윙(Windowing) 홀드백을 완전히 파괴하고, 전 세계 190개국에 당일 동시 스트리밍하는 오리지널 생태계를 안착시킴.
+            </p>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">당해 연도 즉시 등록률 (Lag = 0) 시계열 추이</span>
+            <button class="btn-replay" onclick="animSlide9()">▶ 재생</button>
+          </div>
+          <div class="bars-chart-box" id="s9-bars">
+            <div class="bar-column">
+              <span class="bar-val-text">12%</span>
+              <div class="bar-rect gray" data-h="20%"></div>
+              <span class="bar-label-text">2015년 이전</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">28%</span>
+              <div class="bar-rect gray" data-h="38%"></div>
+              <span class="bar-label-text">2017년</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">44%</span>
+              <div class="bar-rect gray" data-h="58%"></div>
+              <span class="bar-label-text">2019년</span>
+            </div>
+            <div class="bar-column">
+              <span class="bar-val-text">52%+</span>
+              <div class="bar-rect" data-h="78%"></div>
+              <span class="bar-label-text">2021년 (현재)</span>
+            </div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:12px;">
+            신규 카탈로그의 절반 이상이 극장을 거치지 않는 순수 오리지널 직행작
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/08_release_to_addition_lag.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-02')">
+          <span class="cite-id">[REF-02]</span> Netflix Shareholder Letter
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 10: ML CLASSIFICATION MODELING
+         =================================================================== -->
+    <section class="slide" data-slide="10">
+      <div class="slide-meta-row">
+        <span class="section-badge">IV. 머신러닝 모델링 · 포맷 분류 예측</span>
+        <span class="slide-index-counter">10 / 12</span>
+      </div>
+      <h2 class="slide-headline">머신러닝 포맷 분류 예측: Random Forest 정확도 99.4%</h2>
+      <p class="slide-summary-lead">
+        런타임(분/시즌수) 데이터 누수(Leakage)를 원천 배제하고 장르와 제작진 속성만으로 영화와 TV 쇼를 분류했습니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Machine Learning Methodology</span>
+            <div class="card-title">피처 엔지니어링 및 5-Fold Stratified CV 평가</div>
+            <p class="card-content-text">
+              • <strong>모델 아키텍처</strong>: Random Forest (150 트리, 깊이 12) vs Logistic Regression<br/>
+              • <strong>홀드아웃 테스트셋(20%) 정확도</strong>: <strong>99.4%</strong> (F1-Score: 99.0%)<br/>
+              • <strong>ROC-AUC</strong>: <strong>0.999</strong> (5-Fold CV 평균: 0.999)<br/><br/>
+              <strong>핵심 기여 피처 (Feature Importance Top 5)</strong>:<br/>
+              1. <code>Genre: International TV Shows</code> (중요도 0.224)<br/>
+              2. <code>has_director</code> (0.165) — 영화는 감독이 명시되나 TV 쇼는 쇼러너 중심 결측<br/>
+              3. <code>Genre: TV Dramas</code> (0.138) / 4. <code>Genre: Documentaries</code> (0.091)
+            </p>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">홀드아웃 테스트 세트 분류 정확도</span>
+            <button class="btn-replay" onclick="animSlide10()">▶ 재생</button>
+          </div>
+          <div class="metric-display">
+            <div class="metric-number red" id="s10-counter">0%</div>
+            <div class="metric-desc">Random Forest 테스트 세트 분류 정확도 (Accuracy)</div>
+          </div>
+          <div style="width:100%; max-width:280px; height:8px; background:var(--bg-card); border-radius:4px; overflow:hidden; margin: 12px 0;">
+            <div id="s10-gauge" style="width:0%; height:100%; background:var(--netflix-red); border-radius:4px;"></div>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-muted);">
+            ROC-AUC: <strong>0.999</strong> · 정밀도: 99.2% · 재현율: 98.7%
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>관련 시각화: <span class="cite-pill-tag">analysis/figures/11_ml_feature_importance.png</span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-05')">
+          <span class="cite-id">[REF-05]</span> Pedregosa et al. (2011). scikit-learn Framework
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 11: RECOMMENDATION ENGINE PROTOTYPE
+         =================================================================== -->
+    <section class="slide" data-slide="11">
+      <div class="slide-meta-row">
+        <span class="section-badge">IV. 머신러닝 모델링 · 콘텐츠 추천 시스템</span>
+        <span class="slide-index-counter">11 / 12</span>
+      </div>
+      <h2 class="slide-headline">메타데이터 기반 콘텐츠 추천 엔진 프로토타입 (TF-IDF + Cosine)</h2>
+      <p class="slide-summary-lead">
+        제목, 감독, 출연진, 장르, 시놉시스 텍스트를 결합한 벡터 공간 매핑을 통해 유사 콘텐츠를 실시간 추천합니다.
+      </p>
+
+      <div class="slide-grid">
+        <div class="report-card border-accent">
+          <div>
+            <span class="card-label">Recommendation Architecture</span>
+            <div class="card-title">Metadata Soup & Vector Cosine Similarity</div>
+            <p class="card-content-text">
+              1. <strong>Metadata Soup 생성</strong>: <code>title + director + cast + listed_in + description</code> 통합.<br/>
+              2. <strong>TF-IDF Vectorizer</strong>: 불용어(Stopwords) 제거 및 10,000차원 희소 행렬 임베딩.<br/>
+              3. <strong>Pairwise Cosine Similarity</strong>: 8,807개 전수 타이틀 간 각도 유사도를 계산하여 상위 K개 추출.<br/><br/>
+              카탈로그의 롱테일(Long-tail) 비인기 작품도 핵심 키워드 일치를 통해 즉각적인 추천 후보군으로 편입 가능.
+            </p>
+          </div>
+        </div>
+
+        <div class="motion-frame">
+          <div class="motion-topbar">
+            <span class="motion-caption">'오징어 게임' 추천 결과 시뮬레이션</span>
+            <button class="btn-replay" onclick="animSlide11()">▶ 매칭 실행</button>
+          </div>
+          <div style="width:100%; display:flex; flex-direction:column; gap:10px;" id="s11-rec-list">
+            <div class="report-card" style="padding:12px; background:var(--bg-card); opacity:0; transform:translateX(20px);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:700; color:#fff;">1. 킹덤 (Kingdom)</span>
+                <span style="font-size:11px; color:var(--netflix-red); font-weight:800;">유사도 0.432</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">한국 · TV Show · 스릴러/미스터리</div>
+            </div>
+            <div class="report-card" style="padding:12px; background:var(--bg-card); opacity:0; transform:translateX(20px);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:700; color:#fff;">2. 스위트홈 (Sweet Home)</span>
+                <span style="font-size:11px; color:var(--netflix-red); font-weight:800;">유사도 0.398</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">한국 · TV Show · 서바이벌/호러</div>
+            </div>
+            <div class="report-card" style="padding:12px; background:var(--bg-card); opacity:0; transform:translateX(20px);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:700; color:#fff;">3. 인간수업 (Extracurricular)</span>
+                <span style="font-size:11px; color:var(--netflix-red); font-weight:800;">유사도 0.380</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">한국 · TV Show · 다크 범죄/드라마</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>웹 대시보드 연동: <span class="cite-pill-tag"><a href="../dashboard/index.html#recommender" target="_blank" style="color:#3b82f6;">dashboard/index.html 추천 샌드박스 열기 ↗</a></span></div>
+        <div class="cite-pill-tag" onclick="openReferencesModal('REF-03')">
+          <span class="cite-id">[REF-03]</span> ACM TMIS Recommender Study
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         SLIDE 12: CONCLUSION & REFERENCES
+         =================================================================== -->
+    <section class="slide" data-slide="12">
+      <div class="slide-meta-row">
+        <span class="section-badge">V. 결론 및 참고문헌 · 학술 출처 총정리</span>
+        <span class="slide-index-counter">12 / 12</span>
+      </div>
+      <h2 class="slide-headline">과제 결론, 비즈니스 제언 및 공식 참고문헌</h2>
+      <p class="slide-summary-lead">
+        데이터 분석 결과에 기반한 3대 비즈니스 제언과 본 연구에 활용된 학술·산업 레퍼런스 목록입니다.
+      </p>
+
+      <div class="slide-grid full">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom:20px;">
+          <div class="report-card border-accent">
+            <span class="card-label">Recommendation 1</span>
+            <div class="card-title" style="font-size:16px;">K-콘텐츠 허브 투자 심화</div>
+            <p class="card-content-text" style="font-size:13.5px;">
+              한국(79.4% 시리즈)은 서구권 대비 높은 회당 가성비와 글로벌 IP 파급력을 검증받았으므로 현지 제작사 파트너십을 전략적 핵심 축으로 강화해야 함.
+            </p>
+          </div>
+          <div class="report-card border-accent">
+            <span class="card-label">Recommendation 2</span>
+            <div class="card-title" style="font-size:16px;">시즌 2 리뉴얼 기준 유연화</div>
+            <p class="card-content-text" style="font-size:13.5px;">
+              67%의 단일 시즌 종영은 초기 피로도를 줄이나 장기 팬덤 형성을 저해하므로, 중위권 시청층을 확보한 작품의 후속 시즌 승인 기준을 유연화할 필요가 있음.
+            </p>
+          </div>
+          <div class="report-card border-accent">
+            <span class="card-label">Recommendation 3</span>
+            <div class="card-title" style="font-size:16px;">메타데이터 롱테일 초개인화</div>
+            <p class="card-content-text" style="font-size:13.5px;">
+              시놉시스 TF-IDF 임베딩을 검색 인터페이스 전면에 배치하여 성인 등급(60.9%) 라이브러리의 롱테일 소비 전환율을 극대화할 것을 제언함.
+            </p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-01] DATASET</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">Netflix Movies and TV Shows</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">Shivam Bansal (2021). Kaggle Datasets (8,807건 원본).</div>
+          </div>
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-02] REPORT</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">Q3 2021 Shareholder Letter</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">Netflix Investor Relations (2021). 오징어 게임 글로벌 전략.</div>
+          </div>
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-03] PAPER</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">The Netflix Recommender System</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">Gomez-Uribe & Hunt (2016). ACM TMIS, 6(4).</div>
+          </div>
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-04] BUSINESS</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">Why Netflix Cancels Shows</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">Variety Intelligence Platform (2021). 1시즌 캔슬 경제학.</div>
+          </div>
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-05] TECHNICAL</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">Scikit-learn: Machine Learning</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">Pedregosa et al. (2011). JMLR 12. Random Forest.</div>
+          </div>
+          <div class="report-card" style="padding:14px;">
+            <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[REF-06] WORKSPACE</div>
+            <div style="font-size:13px; font-weight:700; color:#fff; margin:2px 0;">Executed Analysis Notebook</div>
+            <div style="font-size:11.5px; color:var(--text-muted);">analysis/netflix_shows_analysis.ipynb (38개 셀).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-citation-row">
+        <div>보고서 산출물: 1) HTML 슬라이드덱  2) 주피터 노트북 원본  3) 웹 데이터베이스 리포트</div>
+        <div>감사합니다 · 이상 보고서 발표를 마칩니다.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Presentation Controller -->
+  <footer id="bottom-controller">
+    <div class="nav-buttons-wrap">
+      <button class="btn-slide-nav" onclick="prevSlide()">◀ 이전 슬라이드</button>
+      <select class="toc-quick-select" id="toc-select" onchange="gotoSlide(Number(this.value))">
+        <option value="1">01. 데이터 분석 보고서 표지</option>
+        <option value="2">02. 서론 및 연구 가설</option>
+        <option value="3">03. 데이터 스키마 및 무결성 감사</option>
+        <option value="4">04. 이상치 복구 및 피처 엔지니어링</option>
+        <option value="5">05. 발견점 1 · 포맷의 전략적 이동</option>
+        <option value="6">06. 발견점 2 · 글로벌 제작 허브 양극화</option>
+        <option value="7">07. 발견점 3 · 1시즌 패러독스</option>
+        <option value="8">08. 발견점 4 · 타겟 오디언스 세그멘테이션</option>
+        <option value="9">09. 발견점 5 · 오리지널 직행 가속화</option>
+        <option value="10">10. 머신러닝 · 포맷 분류 예측 (99.4%)</option>
+        <option value="11">11. 머신러닝 · 콘텐츠 추천 엔진</option>
+        <option value="12">12. 결론 및 공식 참고문헌</option>
+      </select>
+      <button class="btn-slide-nav primary" onclick="nextSlide()">다음 슬라이드 ▶</button>
+    </div>
+
+    <div style="font-size:12.5px; font-weight:700; color:var(--text-muted); font-family:var(--font-code);">
+      SLIDE <span id="slide-num-indicator" style="color:#fff;">1</span> / 12
+    </div>
+
+    <div style="font-size:12px; color:var(--text-faint);">
+      단축키: <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">←</kbd> <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">→</kbd> 이동 · <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">Space</kbd> 다음 · <kbd style="background:var(--bg-surface); padding:2px 6px; border:1px solid var(--border-subtle); border-radius:3px; color:#fff;">F</kbd> 전체화면
+    </div>
+  </footer>
+
+  <!-- References Modal Card -->
+  <div class="ref-modal-overlay" id="references-modal" onclick="closeReferencesModal(event)">
+    <div class="ref-modal-card" onclick="event.stopPropagation()">
+      <div class="ref-modal-head">
+        <div class="ref-modal-title">공식 학술 및 산업 참고문헌 명세서 (References)</div>
+        <span class="ref-close-btn" onclick="closeReferencesModalDirect()">✕</span>
+      </div>
+      <div id="modal-refs-content" style="display:flex; flex-direction:column; gap:14px;">
+        <!-- Loaded via JavaScript from sources.json -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Slide & Anime.js Motion Engine -->
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 12;
+    const slides = document.querySelectorAll('.slide');
+    const progressFill = document.getElementById('progress-fill');
+    const slideNumIndicator = document.getElementById('slide-num-indicator');
+    const tocSelect = document.getElementById('toc-select');
+    const topSectionLabel = document.getElementById('top-section-label');
+
+    const sectionLabels = [
+      "데이터 분석 보고서 표지 (Cover)",
+      "I. 서론 · 연구 배경 및 가설",
+      "II. 데이터 개요 · 스키마 감사",
+      "II. 데이터 전처리 · 이상치 복구",
+      "III. 발견점 1 · 포맷의 전략적 이동",
+      "III. 발견점 2 · 글로벌 제작 양극화",
+      "III. 발견점 3 · 1시즌 패러독스",
+      "III. 발견점 4 · 타겟 오디언스 세그멘테이션",
+      "III. 발견점 5 · 오리지널 직행 가속화",
+      "IV. 머신러닝 · 포맷 분류 예측 (99.4%)",
+      "IV. 머신러닝 · 추천 시스템 프로토타입",
+      "V. 결론 · 비즈니스 제언 및 참고문헌"
+    ];
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', (idx + 1) === currentSlide);
+      });
+
+      slideNumIndicator.innerText = currentSlide;
+      tocSelect.value = String(currentSlide);
+      progressFill.style.width = `${(currentSlide / totalSlides) * 100}%`;
+      topSectionLabel.innerText = sectionLabels[currentSlide - 1];
+
+      // Trigger Anime.js Motion Graphics for Current Slide
+      triggerSlideMotion(currentSlide);
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function gotoSlide(n) {
+      if (n >= 1 && n <= totalSlides) {
+        currentSlide = n;
+        updateSlide();
+      }
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key === 'Home') {
+        gotoSlide(1);
+      } else if (e.key === 'End') {
+        gotoSlide(totalSlides);
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      } else if (e.key === 'r' || e.key === 'R') {
+        openReferencesModal();
+      } else if (e.key === 'Escape') {
+        closeReferencesModalDirect();
+      }
+    });
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // =========================================================================
+    // Anime.js Motion Graphics
+    // =========================================================================
+    function triggerSlideMotion(slideIdx) {
+      switch(slideIdx) {
+        case 2: animSlide2(); break;
+        case 3: animSlide3(); break;
+        case 4: animSlide4(); break;
+        case 5: animSlide5(); break;
+        case 6: animSlide6(); break;
+        case 7: animSlide7(); break;
+        case 8: animSlide8(); break;
+        case 9: animSlide9(); break;
+        case 10: animSlide10(); break;
+        case 11: animSlide11(); break;
+      }
+    }
+
+    // Slide 2: Counter Motion (0 -> 8,807)
+    function animSlide2() {
+      const counterEl = document.getElementById('s2-counter');
+      const counterObj = { count: 0 };
+      anime({
+        targets: counterObj,
+        count: 8807,
+        round: 1,
+        easing: 'easeOutExpo',
+        duration: 1600,
+        update: function() {
+          counterEl.innerText = counterObj.count.toLocaleString();
+        }
+      });
+    }
+
+    // Slide 3: Bars Stagger
+    function animSlide3() {
+      const bars = document.querySelectorAll('#s3-bars .bar-rect');
+      const vals = document.querySelectorAll('#s3-bars .bar-val-text');
+      bars.forEach(b => b.style.height = '0%');
+      vals.forEach(v => v.style.opacity = '0');
+
+      bars.forEach((b, i) => {
+        const targetH = b.getAttribute('data-h');
+        anime({
+          targets: b,
+          height: targetH,
+          duration: 800,
+          delay: i * 140,
+          easing: 'easeOutQuart'
+        });
+      });
+
+      anime({
+        targets: vals,
+        opacity: [0, 1],
+        translateY: [-6, 0],
+        duration: 500,
+        delay: anime.stagger(140, { start: 200 })
+      });
+    }
+
+    // Slide 4: Anomaly Fix Simulation
+    function animSlide4() {
+      const statusMsg = document.getElementById('s4-status-msg');
+      statusMsg.innerHTML = "⏳ 이상치 정규식 파이프라인 처리 중 (duration 컬럼 정렬)...";
+      statusMsg.style.color = "var(--color-gold)";
+
+      anime({
+        targets: '#fix-row-1 .badge-error, #fix-row-2 .badge-error, #fix-row-3 .badge-error',
+        opacity: [1, 0.2, 1],
+        translateX: [0, 20, 0],
+        duration: 800,
+        easing: 'easeInOutQuad',
+        complete: function() {
+          document.getElementById('fix-row-1').innerHTML = `
+            <td>s5542</td><td>Louis C.K. 2017</td>
+            <td><span class="badge-success">Unknown</span></td>
+            <td><span class="badge-success">74 min</span></td>
+          `;
+          document.getElementById('fix-row-2').innerHTML = `
+            <td>s5795</td><td>Louis C.K.: Hilarious</td>
+            <td><span class="badge-success">Unknown</span></td>
+            <td><span class="badge-success">84 min</span></td>
+          `;
+          document.getElementById('fix-row-3').innerHTML = `
+            <td>s5814</td><td>Live at Comedy Store</td>
+            <td><span class="badge-success">Unknown</span></td>
+            <td><span class="badge-success">66 min</span></td>
+          `;
+          statusMsg.innerHTML = "✅ 교정 완료: duration 컬럼으로 정상 분리되어 결측치 보정 완료됨.";
+          statusMsg.style.color = "var(--color-green)";
+        }
+      });
+    }
+
+    // Slide 5: Donut Fill Motion (69.6%)
+    function animSlide5() {
+      const circle = document.getElementById('s5-donut-circle');
+      const valText = document.getElementById('s5-donut-val');
+      const circumference = 2 * Math.PI * 70; // 439.82
+      const targetOffset = circumference * (1 - 0.696);
+
+      circle.style.strokeDasharray = circumference;
+      circle.style.strokeDashoffset = circumference;
+
+      anime({
+        targets: circle,
+        strokeDashoffset: [circumference, targetOffset],
+        duration: 1400,
+        easing: 'easeOutCubic'
+      });
+
+      const countObj = { val: 0 };
+      anime({
+        targets: countObj,
+        val: 69.6,
+        duration: 1400,
+        easing: 'easeOutCubic',
+        update: function() {
+          valText.innerText = `${countObj.val.toFixed(1)}%`;
+        }
+      });
+    }
+
+    // Slide 6: Country Comparison Bars
+    function animSlide6() {
+      const bars = document.querySelectorAll('#s6-bars .bar-rect');
+      const vals = document.querySelectorAll('#s6-bars .bar-val-text');
+      bars.forEach(b => b.style.height = '0%');
+      vals.forEach(v => v.style.opacity = '0');
+
+      bars.forEach((b, i) => {
+        const targetH = b.getAttribute('data-h');
+        anime({
+          targets: b,
+          height: targetH,
+          duration: 900,
+          delay: i * 150,
+          easing: 'easeOutQuart'
+        });
+      });
+
+      anime({
+        targets: vals,
+        opacity: [0, 1],
+        duration: 500,
+        delay: anime.stagger(150, { start: 200 })
+      });
+    }
+
+    // Slide 7: TV Seasons Staircase Bars
+    function animSlide7() {
+      const bars = document.querySelectorAll('#s7-bars .bar-rect');
+      const vals = document.querySelectorAll('#s7-bars .bar-val-text');
+      bars.forEach(b => b.style.height = '0%');
+      vals.forEach(v => v.style.opacity = '0');
+
+      bars.forEach((b, i) => {
+        const targetH = b.getAttribute('data-h');
+        anime({
+          targets: b,
+          height: targetH,
+          duration: 850,
+          delay: i * 120,
+          easing: 'easeOutCubic'
+        });
+      });
+
+      anime({
+        targets: vals,
+        opacity: [0, 1],
+        duration: 500,
+        delay: anime.stagger(120, { start: 200 })
+      });
+    }
+
+    // Slide 8: Ratings Bars
+    function animSlide8() {
+      const bars = document.querySelectorAll('#s8-bars .bar-rect');
+      const vals = document.querySelectorAll('#s8-bars .bar-val-text');
+      bars.forEach(b => b.style.height = '0%');
+      vals.forEach(v => v.style.opacity = '0');
+
+      bars.forEach((b, i) => {
+        const targetH = b.getAttribute('data-h');
+        anime({
+          targets: b,
+          height: targetH,
+          duration: 800,
+          delay: i * 130,
+          easing: 'easeOutExpo'
+        });
+      });
+
+      anime({
+        targets: vals,
+        opacity: [0, 1],
+        duration: 500,
+        delay: anime.stagger(130, { start: 180 })
+      });
+    }
+
+    // Slide 9: Ingestion Lag Bars
+    function animSlide9() {
+      const bars = document.querySelectorAll('#s9-bars .bar-rect');
+      const vals = document.querySelectorAll('#s9-bars .bar-val-text');
+      bars.forEach(b => b.style.height = '0%');
+      vals.forEach(v => v.style.opacity = '0');
+
+      bars.forEach((b, i) => {
+        const targetH = b.getAttribute('data-h');
+        anime({
+          targets: b,
+          height: targetH,
+          duration: 900,
+          delay: i * 140,
+          easing: 'easeOutCubic'
+        });
+      });
+
+      anime({
+        targets: vals,
+        opacity: [0, 1],
+        duration: 500,
+        delay: anime.stagger(140, { start: 200 })
+      });
+    }
+
+    // Slide 10: ML Accuracy Gauge (0 -> 99.4%)
+    function animSlide10() {
+      const counterEl = document.getElementById('s10-counter');
+      const gaugeEl = document.getElementById('s10-gauge');
+      const counterObj = { acc: 0 };
+
+      gaugeEl.style.width = '0%';
+
+      anime({
+        targets: counterObj,
+        acc: 99.4,
+        duration: 1500,
+        easing: 'easeOutExpo',
+        update: function() {
+          counterEl.innerText = `${counterObj.acc.toFixed(1)}%`;
+        }
+      });
+
+      anime({
+        targets: gaugeEl,
+        width: '99.4%',
+        duration: 1500,
+        easing: 'easeOutExpo'
+      });
+    }
+
+    // Slide 11: Recommendation Cards Stagger
+    function animSlide11() {
+      const cards = document.querySelectorAll('#s11-rec-list .report-card');
+      cards.forEach(c => {
+        c.style.opacity = '0';
+        c.style.transform = 'translateX(20px)';
+      });
+
+      anime({
+        targets: cards,
+        translateX: [20, 0],
+        opacity: [0, 1],
+        duration: 600,
+        delay: anime.stagger(180, { start: 100 }),
+        easing: 'easeOutQuart'
+      });
+    }
+
+    // =========================================================================
+    // References Modal Handler
+    // =========================================================================
+    function openReferencesModal(focusId) {
+      document.getElementById('references-modal').classList.add('open');
+      renderReferencesList(focusId);
+    }
+    function closeReferencesModal(e) {
+      if (e.target.id === 'references-modal') closeReferencesModalDirect();
+    }
+    function closeReferencesModalDirect() {
+      document.getElementById('references-modal').classList.remove('open');
+    }
+
+    function renderReferencesList(focusId) {
+      const container = document.getElementById('modal-refs-content');
+      fetch('../references/sources.json')
+        .then(r => r.json())
+        .then(data => {
+          container.innerHTML = data.references.map(ref => `
+            <div class="report-card ${ref.id === focusId ? 'border-accent' : ''}" style="padding:16px;">
+              <div style="font-size:11px; font-weight:800; color:var(--netflix-red);">[${ref.id}] · ${ref.category}</div>
+              <div class="card-title" style="font-size:15px; margin:4px 0 6px;">${ref.title}</div>
+              <div style="font-size:12.5px; color:var(--text-muted); line-height:1.45;">${ref.citation}</div>
+              <div style="font-size:12px; color:#fff; margin-top:6px;">${ref.note}</div>
+              ${ref.url ? `<a href="${ref.url}" target="_blank" style="color:#0071eb; font-size:11.5px; margin-top:6px; display:inline-block;">${ref.url} ↗</a>` : ''}
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          container.innerHTML = `
+            <div class="report-card border-accent"><div class="card-title">[REF-01] Kaggle Dataset</div><p class="card-content-text">Shivam Bansal (2021). Netflix Movies and TV Shows. 8,807 rows.</p></div>
+            <div class="report-card"><div class="card-title">[REF-02] Shareholder Letter</div><p class="card-content-text">Netflix Q3 2021 Letter to Shareholders. K-Content Global Growth.</p></div>
+            <div class="report-card"><div class="card-title">[REF-03] ACM TMIS Paper</div><p class="card-content-text">Gomez-Uribe & Hunt (2016). The Netflix Recommender System.</p></div>
+            <div class="report-card"><div class="card-title">[REF-04] Variety VIP Report</div><p class="card-content-text">Wallenstein (2021). Why Netflix Cancels Shows After One Season.</p></div>
+          `;
+        });
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      updateSlide();
+    });
+  </script>
+</body>
+</html>
