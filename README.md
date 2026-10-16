@@ -2,6 +2,11 @@
 
 > Kaggle의 `shivamb/netflix-shows` 데이터셋(8,807건)을 기반으로 한 **종합 데이터 분석**, **실행 주피터 노트북**, **인터랙티브 웹 데이터베이스**, **HTML 슬라이드덱**, 그리고 **체계적인 레퍼런스 관리 시스템**을 갖춘 프로젝트입니다.
 
+🌐 **GitHub Pages 라이브 배포 URL**:
+- 🎯 **HTML 슬라이드덱**: [https://haneulgoen.github.io/netflix-catalog-analysis/](https://haneulgoen.github.io/netflix-catalog-analysis/)
+- 🗄️ **웹 데이터베이스 뷰어**: [https://haneulgoen.github.io/netflix-catalog-analysis/dashboard/index.html](https://haneulgoen.github.io/netflix-catalog-analysis/dashboard/index.html)
+- 📦 **GitHub 저장소**: [https://github.com/haneulgoen/netflix-catalog-analysis](https://github.com/haneulgoen/netflix-catalog-analysis)
+
 ---
 
 ## 📂 프로젝트 전체 폴더 맵 (Project Structure)
